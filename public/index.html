@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Request a Video Edit — FrameCraft Studio</title>
+<meta name="description" content="Request professional video editing. Join the queue and track your edit in real-time." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="index.html" class="nav-brand">
+      <div class="nav-brand-icon">🎬</div>
+      <span class="nav-brand-text">FrameCraft</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="active">Request</a>
+      <a href="queue.html">Live Queue</a>
+      <a href="admin.html">Admin</a>
+    </div>
+  </nav>
+
+  <!-- Header -->
+  <div class="page-header">
+    <h1><span class="emoji">✂️</span>Request a Video Edit</h1>
+    <p class="subtitle">Fill in the details below and you'll be added to the editing queue instantly. A confirmation email will land in your inbox right away.</p>
+  </div>
+
+  <!-- Form Card -->
+  <div class="card-glass" style="max-width:560px; margin:0 auto;">
+    <form id="reqForm">
+      <div class="form-group">
+        <label for="name">Your Name</label>
+        <input type="text" id="name" required placeholder="e.g. John Doe" autocomplete="name" />
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Phone Number</label>
+        <input type="tel" id="phone" required placeholder="e.g. +91 98765 43210" autocomplete="tel" />
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" required placeholder="e.g. john@email.com" autocomplete="email" />
+      </div>
+
+      <div class="form-group">
+        <label for="videoType">Type of Video</label>
+        <input type="text" id="videoType" required placeholder="Describe your video (e.g. Wedding highlight reel)" />
+        <div class="type-suggestions">
+          <span class="type-pill" data-type="Reel / Short Video">🎞️ Reel / Short</span>
+          <span class="type-pill" data-type="YouTube Video">▶️ YouTube</span>
+          <span class="type-pill" data-type="Wedding Highlight">💒 Wedding</span>
+          <span class="type-pill" data-type="Corporate / Ad">🏢 Corporate</span>
+          <span class="type-pill" data-type="Music Video">🎵 Music Video</span>
+          <span class="type-pill" data-type="Podcast Clip">🎙️ Podcast</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="notes">Additional Notes <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+        <textarea id="notes" rows="3" placeholder="Raw footage link, style reference, deadline notes..."></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
+        <span class="btn-text">🚀 Join the Queue</span>
+        <span class="spinner"></span>
+      </button>
+    </form>
+
+    <!-- Success State -->
+    <div id="successState" class="hidden">
+      <div class="position-result">
+        <div class="success-check">✓</div>
+        <h2 style="margin-bottom:8px;">You're In!</h2>
+        <p class="text-sec mb-16">Your request has been added to the editing queue.</p>
+        <div style="font-size:14px; color:var(--text-sec); margin-bottom:4px;">YOUR QUEUE POSITION</div>
+        <div class="position-number" id="posNumber"></div>
+        <p class="text-sec mt-16" style="font-size:14px;">📧 A confirmation email is on its way to your inbox.</p>
+        <button class="btn btn-secondary mt-24" onclick="resetForm()">Submit Another Request</button>
+      </div>
+    </div>
+
+    <div id="errorMsg"></div>
+  </div>
+</div>
+
+<script>
+// Suggestion pills
+document.querySelectorAll('.type-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.getElementById('videoType').value = pill.dataset.type;
+    document.getElementById('videoType').focus();
+  });
+});
+
+// Form submission
+document.getElementById('reqForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const errDiv = document.getElementById('errorMsg');
+  errDiv.innerHTML = '';
+
+  btn.classList.add('btn-loading');
+  btn.disabled = true;
+
+  const payload = {
+    name: document.getElementById('name').value,
+    phone: document.getElementById('phone').value,
+    email: document.getElementById('email').value,
+    videoType: document.getElementById('videoType').value,
+    notes: document.getElementById('notes').value,
+  };
+
+  try {
+    const res = await fetch('/api/requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Something went wrong');
+
+    // Show success state
+    document.getElementById('reqForm').classList.add('hidden');
+    document.getElementById('successState').classList.remove('hidden');
+    document.getElementById('posNumber').textContent = '#' + data.position;
+    launchConfetti();
+  } catch (err) {
+    errDiv.innerHTML = `<div class="msg msg-error">${escapeHtml(err.message)}</div>`;
+  } finally {
+    btn.classList.remove('btn-loading');
+    btn.disabled = false;
+  }
+});
+
+function resetForm() {
+  document.getElementById('reqForm').classList.remove('hidden');
+  document.getElementById('successState').classList.add('hidden');
+  document.getElementById('reqForm').reset();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function launchConfetti() {
+  const colors = ['#6366f1','#a855f7','#06b6d4','#10b981','#f59e0b','#f43f5e','#fbbf24','#6ee7b7'];
+  for (let i = 0; i < 50; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + 'vw';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.width = (Math.random() * 8 + 6) + 'px';
+    piece.style.height = (Math.random() * 8 + 6) + 'px';
+    piece.style.animationDuration = (Math.random() * 2 + 1.5) + 's';
+    piece.style.animationDelay = (Math.random() * .5) + 's';
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 4000);
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rate Your Video — FrameCraft Studio</title>
+<meta name="description" content="Rate your video editing experience with FrameCraft Studio." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="page-wrap" style="display:flex; align-items:center; justify-content:center; min-height:100vh; padding-top:0;">
+
+  <div style="width:100%; max-width:520px;">
+
+    <!-- Rating UI -->
+    <div id="ratingUI">
+      <div class="text-center mb-24">
+        <div style="font-size:56px; margin-bottom:16px; animation: counter-pop .6s ease-out;">🎬</div>
+        <h1 style="font-family:var(--font-heading); font-size:28px; font-weight:800; margin-bottom:8px;">How did it turn out?</h1>
+        <p class="text-sec" style="font-size:15px;">Tap an emoji to rate your video editing experience</p>
+      </div>
+
+      <div class="card-glass">
+        <div class="emoji-container">
+          <div class="emoji-btn" onclick="rate(1)" id="emoji1">
+            <div class="e">😐</div>
+            <div class="l">It's okay</div>
+          </div>
+          <div class="emoji-btn" onclick="rate(2)" id="emoji2">
+            <div class="e">😃</div>
+            <div class="l">Good</div>
+          </div>
+          <div class="emoji-btn" onclick="rate(3)" id="emoji3">
+            <div class="e">🤩</div>
+            <div class="l">Loved it!</div>
+          </div>
+        </div>
+        <div id="ratingError"></div>
+      </div>
+    </div>
+
+    <!-- Thank You State -->
+    <div id="thankYou" class="hidden">
+      <div class="thank-you">
+        <div class="success-check">🙌</div>
+        <h2>Thank You!</h2>
+        <p>Your feedback means everything. We appreciate you choosing FrameCraft Studio!</p>
+        <div style="margin-top:32px;">
+          <a href="index.html" class="btn btn-primary">Request Another Edit</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const id = params.get('id');
+const token = params.get('token');
+const preScore = params.get('score');
+
+async function rate(score) {
+  const errDiv = document.getElementById('ratingError');
+  errDiv.innerHTML = '';
+
+  // Highlight selected emoji
+  document.querySelectorAll('.emoji-btn').forEach(btn => {
+    btn.style.opacity = '0.3';
+    btn.style.pointerEvents = 'none';
+  });
+  const selected = document.getElementById('emoji' + score);
+  selected.style.opacity = '1';
+  selected.style.transform = 'scale(1.2)';
+
+  try {
+    const res = await fetch(`/api/requests/${id}/rate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, score }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not save rating');
+
+    // Show thank you + confetti
+    setTimeout(() => {
+      document.getElementById('ratingUI').classList.add('hidden');
+      document.getElementById('thankYou').classList.remove('hidden');
+      launchConfetti();
+    }, 600);
+  } catch (err) {
+    errDiv.innerHTML = `<div class="msg msg-error" style="text-align:center;">${escapeHtml(err.message)}</div>`;
+    document.querySelectorAll('.emoji-btn').forEach(btn => {
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+      btn.style.transform = '';
+    });
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function launchConfetti() {
+  const colors = ['#6366f1','#a855f7','#06b6d4','#10b981','#f59e0b','#f43f5e','#fbbf24','#6ee7b7'];
+  for (let i = 0; i < 60; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + 'vw';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.width = (Math.random() * 8 + 6) + 'px';
+    piece.style.height = (Math.random() * 8 + 6) + 'px';
+    piece.style.animationDuration = (Math.random() * 2 + 1.5) + 's';
+    piece.style.animationDelay = (Math.random() * .6) + 's';
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 4500);
+  }
+}
+
+// Auto-submit if score is in URL (clicked from email)
+if (id && token && preScore) rate(Number(preScore));
+</script>
+</body>
+</html>

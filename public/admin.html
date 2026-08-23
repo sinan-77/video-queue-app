@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Dashboard — FrameCraft Studio</title>
+<meta name="description" content="Admin dashboard for managing video editing requests." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="page-wrap">
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="index.html" class="nav-brand">
+      <div class="nav-brand-icon">🎬</div>
+      <span class="nav-brand-text">FrameCraft</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html">Request</a>
+      <a href="queue.html">Live Queue</a>
+      <a href="admin.html" class="active">Admin</a>
+      <a href="#" id="logoutBtn" class="hidden" onclick="logout(); return false;">Logout</a>
+    </div>
+  </nav>
+
+  <!-- Login Screen -->
+  <div id="loginScreen">
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="login-title">
+          <div class="icon">🔐</div>
+          <h2>Admin Access</h2>
+          <p>Enter your password to manage the queue</p>
+        </div>
+        <form onsubmit="login(event)">
+          <div class="form-group">
+            <label for="pw">Password</label>
+            <input type="password" id="pw" placeholder="Enter admin password" required autocomplete="current-password" />
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
+            <span class="btn-text">Log In</span>
+            <span class="spinner"></span>
+          </button>
+        </form>
+        <div id="loginMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="hidden">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-24" style="flex-wrap:wrap; gap:12px;">
+      <h1 style="font-family:var(--font-heading); font-size:28px; font-weight:800;">📊 Dashboard</h1>
+      <button class="btn btn-secondary btn-sm" onclick="loadAll()">↻ Refresh</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-num">-</div><div class="stat-label">Total</div></div>
+      <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-num">-</div><div class="stat-label">Waiting</div></div>
+      <div class="stat-card"><div class="stat-icon">🔄</div><div class="stat-num">-</div><div class="stat-label">In Progress</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num">-</div><div class="stat-label">Completed</div></div>
+      <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-num">-</div><div class="stat-label">Avg Rating</div></div>
+    </div>
+
+    <!-- Top video types -->
+    <div class="card mb-24">
+      <h3 class="mt-0 mb-16">🎥 Top Requested Video Types</h3>
+      <div id="topTypesChart" class="bar-chart">
+        <p class="text-sec text-sm">Loading…</p>
+      </div>
+    </div>
+
+    <!-- Requests Table -->
+    <div class="card">
+      <h3 class="mt-0 mb-16">All Requests</h3>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search by name, email, or video type…" oninput="filterTable()" />
+        <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">All</button>
+        <button class="filter-btn" data-filter="requested" onclick="setFilter('requested', this)">Waiting</button>
+        <button class="filter-btn" data-filter="in_progress" onclick="setFilter('in_progress', this)">In Progress</button>
+        <button class="filter-btn" data-filter="completed" onclick="setFilter('completed', this)">Completed</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Contact</th>
+              <th>Video Type</th>
+              <th>Status</th>
+              <th>Rating</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="reqBody">
+            <tr><td colspan="6" class="text-sec text-center">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let ADMIN_PW = sessionStorage.getItem('adminPw') || '';
+let allRows = [];
+let currentFilter = 'all';
+
+// ===== AUTH =====
+async function login(e) {
+  e && e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  const pw = document.getElementById('pw').value;
+  btn.classList.add('btn-loading');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+    if (res.ok) {
+      ADMIN_PW = pw;
+      sessionStorage.setItem('adminPw', pw);
+      showDashboard();
+    } else {
+      document.getElementById('loginMsg').innerHTML = '<div class="msg msg-error">Wrong password. Try again.</div>';
+    }
+  } catch {
+    document.getElementById('loginMsg').innerHTML = '<div class="msg msg-error">Connection error.</div>';
+  } finally {
+    btn.classList.remove('btn-loading');
+    btn.disabled = false;
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('adminPw');
+  ADMIN_PW = '';
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('logoutBtn').classList.add('hidden');
+  document.getElementById('pw').value = '';
+}
+
+function showDashboard() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+  document.getElementById('logoutBtn').classList.remove('hidden');
+  loadAll();
+}
+
+async function authed(url, opts = {}) {
+  opts.headers = Object.assign({}, opts.headers, {
+    'x-admin-password': ADMIN_PW,
+    'Content-Type': 'application/json',
+  });
+  const res = await fetch(url, opts);
+  if (res.status === 401) {
+    logout();
+    toast('Session expired. Please log in again.', 'error');
+    throw new Error('Unauthorized');
+  }
+  return res;
+}
+
+// ===== DATA LOADING =====
+async function loadAll() {
+  await Promise.all([loadStats(), loadRequests()]);
+}
+
+async function loadStats() {
+  try {
+    const res = await authed('/api/admin/stats');
+    const s = await res.json();
+
+    document.getElementById('statsGrid').innerHTML = `
+      <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-num">${s.total}</div><div class="stat-label">Total Requests</div></div>
+      <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-num">${s.requested}</div><div class="stat-label">Waiting</div></div>
+      <div class="stat-card"><div class="stat-icon">🔄</div><div class="stat-num">${s.inProgress}</div><div class="stat-label">In Progress</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-num">${s.completed}</div><div class="stat-label">Completed</div></div>
+      <div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-num">${s.avgRating ? s.avgRating.toFixed(1) : '—'}</div><div class="stat-label">Avg Rating (${s.ratedCount})</div></div>
+    `;
+
+    // Bar chart
+    const chart = document.getElementById('topTypesChart');
+    if (s.topTypes.length === 0) {
+      chart.innerHTML = '<p class="text-sec text-sm">No data yet. Requests will show up here.</p>';
+    } else {
+      const maxCount = Math.max(...s.topTypes.map(t => t.c));
+      chart.innerHTML = s.topTypes.map(t => {
+        const pct = Math.max(10, (t.c / maxCount) * 100);
+        return `
+          <div class="bar-item">
+            <div class="bar-label">${escapeHtml(t.video_type)}</div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${pct}%">${t.c}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  } catch (e) {
+    if (e.message !== 'Unauthorized') console.error(e);
+  }
+}
+
+async function loadRequests() {
+  try {
+    const res = await authed('/api/admin/requests');
+    allRows = await res.json();
+    renderTable();
+  } catch (e) {
+    if (e.message !== 'Unauthorized') console.error(e);
+  }
+}
+
+function renderTable() {
+  const search = (document.getElementById('searchInput').value || '').toLowerCase();
+  const emoji = { 1: '😐', 2: '😃', 3: '🤩' };
+  const tbody = document.getElementById('reqBody');
+
+  let filtered = allRows;
+  if (currentFilter !== 'all') {
+    filtered = filtered.filter(r => r.status === currentFilter);
+  }
+  if (search) {
+    filtered = filtered.filter(r =>
+      r.name.toLowerCase().includes(search) ||
+      r.email.toLowerCase().includes(search) ||
+      r.video_type.toLowerCase().includes(search)
+    );
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-sec" style="padding:32px;">No matching requests found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => `
+    <tr>
+      <td class="td-name">
+        ${escapeHtml(r.name)}
+        ${r.status === 'requested' && r.position ? ` <span class="text-xs text-sec">#${r.position}</span>` : ''}
+      </td>
+      <td class="td-contact">
+        ${escapeHtml(r.phone)}<br/>${escapeHtml(r.email)}
+      </td>
+      <td>${escapeHtml(r.video_type)}${r.notes ? `<br/><span class="text-xs text-muted">${escapeHtml(r.notes).substring(0, 60)}${r.notes.length > 60 ? '…' : ''}</span>` : ''}</td>
+      <td><span class="badge badge-${r.status}">${r.status.replace('_', ' ')}</span></td>
+      <td style="font-size:20px;">${r.rating ? emoji[r.rating] : '<span class="text-muted">—</span>'}</td>
+      <td>
+        <div class="td-actions">
+          ${r.status === 'requested' ? `<button class="btn btn-warning btn-sm" onclick="startEdit('${r.id}')">▶ Start</button>` : ''}
+          ${r.status === 'in_progress' ? `<button class="btn btn-success btn-sm" onclick="finish('${r.id}')">✅ Finish</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="del('${r.id}')">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterTable() { renderTable(); }
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderTable();
+}
+
+// ===== ACTIONS =====
+async function startEdit(id) {
+  try {
+    await authed(`/api/admin/requests/${id}/start`, { method: 'PATCH' });
+    toast('Video editing started! Client notified via email. 🎬', 'success');
+    loadAll();
+  } catch (e) { if (e.message !== 'Unauthorized') toast('Failed to start', 'error'); }
+}
+
+async function finish(id) {
+  if (!confirm('Mark this video as finished? The client will receive a completion email.')) return;
+  try {
+    await authed(`/api/admin/requests/${id}/finish`, { method: 'PATCH' });
+    toast('Video delivered! Completion email sent. ✅', 'success');
+    loadAll();
+  } catch (e) { if (e.message !== 'Unauthorized') toast('Failed to finish', 'error'); }
+}
+
+async function del(id) {
+  if (!confirm('Permanently delete this request? This cannot be undone.')) return;
+  try {
+    await authed(`/api/admin/requests/${id}`, { method: 'DELETE' });
+    toast('Request deleted.', 'info');
+    loadAll();
+  } catch (e) { if (e.message !== 'Unauthorized') toast('Failed to delete', 'error'); }
+}
+
+// ===== TOAST SYSTEM =====
+function toast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  t.innerHTML = `<span>${icons[type] || ''}</span><span>${message}</span>`;
+  container.appendChild(t);
+  setTimeout(() => {
+    t.classList.add('removing');
+    setTimeout(() => t.remove(), 300);
+  }, 3500);
+}
+
+// ===== UTILS =====
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Auto-login if session exists
+if (ADMIN_PW) showDashboard();
+</script>
+</body>
+</html>

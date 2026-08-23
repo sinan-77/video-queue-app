@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Live Queue — FrameCraft Studio</title>
+<meta name="description" content="See the live video editing queue. Track your position and estimated wait time in real-time." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="index.html" class="nav-brand">
+      <div class="nav-brand-icon">🎬</div>
+      <span class="nav-brand-text">FrameCraft</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html">Request</a>
+      <a href="queue.html" class="active">Live Queue</a>
+      <a href="admin.html">Admin</a>
+    </div>
+  </nav>
+
+  <!-- Header -->
+  <div class="page-header">
+    <h1><span class="emoji">📋</span>Live Queue</h1>
+    <p class="subtitle">See who's up next. Names are shortened for privacy. The queue updates every 15 seconds.</p>
+  </div>
+
+  <!-- Now Editing section -->
+  <div id="nowEditing" class="hidden">
+    <div class="queue-section-title">
+      <span class="dot amber"></span> Now Editing
+    </div>
+    <div class="queue-list mb-24" id="editingList"></div>
+  </div>
+
+  <!-- Waiting section -->
+  <div id="waitingSection" class="hidden">
+    <div class="queue-section-title">
+      <span class="dot green"></span> Waiting in Queue
+    </div>
+    <div class="queue-list" id="waitingList"></div>
+  </div>
+
+  <!-- Empty state -->
+  <div id="emptyState" class="hidden">
+    <div class="card">
+      <div class="queue-empty">
+        <div class="emoji">🎉</div>
+        <p><strong>Queue is empty!</strong></p>
+        <p class="text-sec mt-16">No pending requests right now. Be the first!</p>
+        <a href="index.html" class="btn btn-primary mt-24">Request an Edit</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading state -->
+  <div id="loadingState" class="text-center" style="padding:60px 0;">
+    <div class="spinner" style="display:block; margin:0 auto; width:24px; height:24px; border-color:rgba(255,255,255,.15); border-top-color:var(--indigo);"></div>
+    <p class="text-sec mt-16">Loading queue…</p>
+  </div>
+
+  <!-- Refresh indicator -->
+  <div class="refresh-bar" id="refreshBar" style="display:none;">
+    <span class="refresh-dot"></span>
+    <span>Auto-refreshing every 15s</span>
+  </div>
+
+</div>
+
+<script>
+async function loadQueue() {
+  try {
+    const res = await fetch('/api/queue');
+    const rows = await res.json();
+
+    document.getElementById('loadingState').classList.add('hidden');
+
+    const editing = rows.filter(r => r.status === 'in_progress');
+    const waiting = rows.filter(r => r.status === 'requested');
+
+    // Now Editing
+    const editingSection = document.getElementById('nowEditing');
+    const editingList = document.getElementById('editingList');
+    if (editing.length > 0) {
+      editingSection.classList.remove('hidden');
+      editingList.innerHTML = editing.map(r => `
+        <div class="queue-card" style="border-color: rgba(245,158,11,.2);">
+          <div class="queue-pos active" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
+            <span style="font-size:18px;">🔥</span>
+          </div>
+          <div class="queue-info">
+            <div class="name">${escapeHtml(r.name)}</div>
+            <div class="type">${escapeHtml(r.videoType)}</div>
+          </div>
+          <span class="badge badge-in_progress">In Progress</span>
+        </div>
+      `).join('');
+    } else {
+      editingSection.classList.add('hidden');
+    }
+
+    // Waiting
+    const waitingSection = document.getElementById('waitingSection');
+    const waitingList = document.getElementById('waitingList');
+    if (waiting.length > 0) {
+      waitingSection.classList.remove('hidden');
+      waitingList.innerHTML = waiting.map((r, i) => `
+        <div class="queue-card" style="animation-delay: ${i * 0.06}s;">
+          <div class="queue-pos">#${r.position}</div>
+          <div class="queue-info">
+            <div class="name">${escapeHtml(r.name)}</div>
+            <div class="type">${escapeHtml(r.videoType)}</div>
+          </div>
+          <span class="badge badge-requested">Waiting</span>
+        </div>
+      `).join('');
+    } else {
+      waitingSection.classList.add('hidden');
+    }
+
+    // Empty state
+    const emptyState = document.getElementById('emptyState');
+    if (editing.length === 0 && waiting.length === 0) {
+      emptyState.classList.remove('hidden');
+    } else {
+      emptyState.classList.add('hidden');
+    }
+
+    document.getElementById('refreshBar').style.display = 'flex';
+  } catch (e) {
+    console.error('Failed to load queue:', e);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+loadQueue();
+setInterval(loadQueue, 15000);
+</script>
+</body>
+</html>
