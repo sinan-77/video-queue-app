@@ -1,16 +1,26 @@
 const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT || 465),
-  secure: String(process.env.SMTP_SECURE || 'true') === 'true',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const transporterConfig = process.env.SMTP_HOST && process.env.SMTP_HOST !== 'smtp.gmail.com'
+  ? {
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 465),
+      secure: String(process.env.SMTP_SECURE || 'true') === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    }
+  : {
+      service: 'gmail',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    };
 
-const FROM = `"${process.env.FROM_NAME || 'FrameCraft Studio'}" <${process.env.SMTP_USER}>`;
+const transporter = nodemailer.createTransport(transporterConfig);
+
+const FROM = `"${process.env.FROM_NAME || 'FrameCraft Studio'}" <${process.env.SMTP_USER || 'mohdsinan707@gmail.com'}>`;
 
 // ===== Shared email wrapper =====
 function wrapper(innerHtml) {
