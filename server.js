@@ -216,7 +216,7 @@ app.get('/api/admin/stats', requireAdmin, (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
-  app.listen(PORT, () => console.log(`🎬 Sinan Edits running on http://localhost:${PORT}`));
+  app.listen(PORT, () => console.log(`🎬 Editing Universe running on http://localhost:${PORT}`));
 }
 
 module.exports = app;

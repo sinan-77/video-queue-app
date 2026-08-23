@@ -20,7 +20,7 @@ const transporterConfig = process.env.SMTP_HOST && process.env.SMTP_HOST !== 'sm
 
 const transporter = nodemailer.createTransport(transporterConfig);
 
-const FROM = `"${process.env.FROM_NAME || 'Sinan'}" <${process.env.SMTP_USER || 'mohdsinan707@gmail.com'}>`;
+const FROM = `"${process.env.FROM_NAME || 'Editing Universe'}" <${process.env.SMTP_USER || 'mohdsinan707@gmail.com'}>`;
 
 // ===== Shared email wrapper =====
 function wrapper(innerHtml) {
@@ -30,7 +30,7 @@ function wrapper(innerHtml) {
       <!-- Header bar -->
       <div style="background:linear-gradient(135deg,#6366f1,#a855f7);padding:32px 36px;">
         <div style="font-size:32px;margin-bottom:6px;">🎬✂️</div>
-        <div style="color:#fff;font-size:22px;font-weight:700;letter-spacing:-.3px;">Sinan Edits</div>
+        <div style="color:#fff;font-size:22px;font-weight:700;letter-spacing:-.3px;">Editing Universe</div>
         <div style="color:rgba(255,255,255,.7);font-size:13px;margin-top:4px;">Professional Video Editing</div>
       </div>
       <!-- Body -->
@@ -39,7 +39,7 @@ function wrapper(innerHtml) {
       </div>
       <!-- Footer -->
       <div style="padding:20px 36px;background:rgba(255,255,255,.03);border-top:1px solid rgba(255,255,255,.06);color:#64748b;font-size:12px;text-align:center;">
-        You're receiving this because you requested a video edit with Sinan Edits.
+        You're receiving this because you requested a video edit with Editing Universe.
         <br/>Reply to this email with any questions.
       </div>
     </div>
@@ -123,7 +123,7 @@ async function sendCompletion({ to, name, videoType, ratingLinkBase }) {
       ${mk(3, '🤩', 'Loved it!')}
     </div>
     <p style="margin:0;color:#64748b;font-size:13px;text-align:center;">
-      Tap an emoji to send your rating — takes one second.<br/>Thanks for trusting FrameCraft Studio with your video! 💜
+      Tap an emoji to send your rating — takes one second.<br/>Thanks for trusting Editing Universe with your video! 💜
     </p>
   `);
   await transporter.sendMail({
