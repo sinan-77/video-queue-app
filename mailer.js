@@ -1,26 +1,27 @@
 const nodemailer = require('nodemailer');
 
-const transporterConfig = process.env.SMTP_HOST && process.env.SMTP_HOST !== 'smtp.gmail.com'
-  ? {
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 465),
-      secure: String(process.env.SMTP_SECURE || 'true') === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    }
-  : {
-      service: 'gmail',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    };
+function createTransporter() {
+  const transporterConfig = process.env.SMTP_HOST && process.env.SMTP_HOST !== 'smtp.gmail.com'
+    ? {
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT || 465),
+        secure: String(process.env.SMTP_SECURE || 'true') === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      }
+    : {
+        service: 'gmail',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      };
+  return nodemailer.createTransport(transporterConfig);
+}
 
-const transporter = nodemailer.createTransport(transporterConfig);
-
-const FROM = `"${process.env.FROM_NAME || 'Editing Universe'}" <${process.env.SMTP_USER || 'mohdsinan707@gmail.com'}>`;
+const getFrom = () => `"${process.env.FROM_NAME || 'Editing Universe'}" <${process.env.SMTP_USER || 'mohdsinan707@gmail.com'}>`;
 
 // ===== Shared email wrapper =====
 function wrapper(innerHtml) {
@@ -65,8 +66,8 @@ async function sendAcknowledgement({ to, name, videoType, position, etaHours }) 
     </p>
     <p style="margin:0;color:#64748b;font-size:14px;">Thanks for your patience!</p>
   `);
-  await transporter.sendMail({
-    from: FROM,
+  await createTransporter().sendMail({
+    from: getFrom(),
     to,
     subject: `✅ Request received — you're #${position} in the editing queue`,
     html,
@@ -91,8 +92,8 @@ async function sendStarted({ to, name, videoType }) {
     </p>
     <p style="margin:0;color:#64748b;font-size:14px;">Almost there!</p>
   `);
-  await transporter.sendMail({
-    from: FROM,
+  await createTransporter().sendMail({
+    from: getFrom(),
     to,
     subject: `🔥 Your ${videoType} video editing has started!`,
     html,
@@ -126,8 +127,8 @@ async function sendCompletion({ to, name, videoType, ratingLinkBase }) {
       Tap an emoji to send your rating — takes one second.<br/>Thanks for trusting Editing Universe with your video! 💜
     </p>
   `);
-  await transporter.sendMail({
-    from: FROM,
+  await createTransporter().sendMail({
+    from: getFrom(),
     to,
     subject: `🎉 Your ${videoType} video is ready!`,
     html,

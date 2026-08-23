@@ -284,8 +284,13 @@ function setFilter(filter, el) {
 // ===== ACTIONS =====
 async function startEdit(id) {
   try {
-    await authed(`/api/admin/requests/${id}/start`, { method: 'PATCH' });
-    toast('Video editing started! Client notified via email. 🎬', 'success');
+    const res = await authed(`/api/admin/requests/${id}/start`, { method: 'PATCH' });
+    const data = await res.json();
+    if (data.emailError) {
+      toast(`Started! (Email notice: ${data.emailError})`, 'error');
+    } else {
+      toast('Video editing started! Client notified via email. 🎬', 'success');
+    }
     loadAll();
   } catch (e) { if (e.message !== 'Unauthorized') toast('Failed to start', 'error'); }
 }
@@ -293,8 +298,13 @@ async function startEdit(id) {
 async function finish(id) {
   if (!confirm('Mark this video as finished? The client will receive a completion email.')) return;
   try {
-    await authed(`/api/admin/requests/${id}/finish`, { method: 'PATCH' });
-    toast('Video delivered! Completion email sent. ✅', 'success');
+    const res = await authed(`/api/admin/requests/${id}/finish`, { method: 'PATCH' });
+    const data = await res.json();
+    if (data.emailError) {
+      toast(`Finished! (Email notice: ${data.emailError})`, 'error');
+    } else {
+      toast('Video delivered! Completion email sent. ✅', 'success');
+    }
     loadAll();
   } catch (e) { if (e.message !== 'Unauthorized') toast('Failed to finish', 'error'); }
 }

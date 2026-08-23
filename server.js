@@ -149,26 +149,30 @@ app.get('/api/admin/requests', requireAdmin, (req, res) => {
 
 app.patch('/api/admin/requests/:id/start', requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const row = db.prepare(`SELECT * FROM requests WHERE id = ? AND status = 'requested'`).get(id);
-  if (!row) return res.status(400).json({ error: 'Request not in a startable state' });
+  const row = db.prepare(`SELECT * FROM requests WHERE id = ?`).get(id);
+  if (!row) return res.status(404).json({ error: 'Request not found' });
 
   const started_at = new Date().toISOString();
   db.prepare(`UPDATE requests SET status = 'in_progress', started_at = ? WHERE id = ?`).run(started_at, id);
 
   // Send "editing started" notification email
+  let emailSent = false;
+  let emailError = null;
   try {
     await sendStarted({ to: row.email, name: row.name, videoType: row.video_type });
+    emailSent = true;
   } catch (e) {
+    emailError = e.message;
     console.error('Failed to send started email:', e.message);
   }
 
-  res.json({ ok: true });
+  res.json({ ok: true, emailSent, emailError });
 });
 
 app.patch('/api/admin/requests/:id/finish', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const row = db.prepare(`SELECT * FROM requests WHERE id = ?`).get(id);
-  if (!row) return res.status(404).json({ error: 'Not found' });
+  if (!row) return res.status(404).json({ error: 'Request not found' });
 
   const completed_at = new Date().toISOString();
   db.prepare(`UPDATE requests SET status = 'completed', completed_at = ? WHERE id = ?`).run(completed_at, id);
@@ -176,13 +180,17 @@ app.patch('/api/admin/requests/:id/finish', requireAdmin, async (req, res) => {
   const token = ratingToken(id);
   const ratingLinkBase = `${APP_URL}/rate.html?id=${id}&token=${token}`;
 
+  let emailSent = false;
+  let emailError = null;
   try {
     await sendCompletion({ to: row.email, name: row.name, videoType: row.video_type, ratingLinkBase });
+    emailSent = true;
   } catch (e) {
+    emailError = e.message;
     console.error('Failed to send completion email:', e.message);
   }
 
-  res.json({ ok: true });
+  res.json({ ok: true, emailSent, emailError });
 });
 
 app.delete('/api/admin/requests/:id', requireAdmin, (req, res) => {
