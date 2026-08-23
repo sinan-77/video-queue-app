@@ -5,9 +5,27 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('./db');
 const { sendAcknowledgement, sendStarted, sendCompletion } = require('./mailer');
 
+const path = require('path');
+
 const app = express();
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/queue', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'queue.html'));
+});
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/rate', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'rate.html'));
+});
 
 const SECRET = process.env.SECRET || 'dev-secret';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
